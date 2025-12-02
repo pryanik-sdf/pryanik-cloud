@@ -1,15 +1,19 @@
+require('dotenv').config();
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const jwtSecret = 'your-secret-key'; // В продакшене использовать переменные окружения
+const host = process.env.HOST || '0.0.0.0';
+const jwtSecret = process.env.JWT_SECRET || 'default-secret';
 
 // Инициализация БД
 const db = new sqlite3.Database('./database.db');
@@ -40,7 +44,10 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Middleware
+// Middleware безопасности
+app.use(helmet());
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 })); // 100 запросов за 15 мин с одного IP
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -117,6 +124,6 @@ app.post('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-app.listen(port, () => {
-  console.log(`Сервер работает на http://localhost:${port}`);
+app.listen(port, host, () => {
+  console.log(`Сервер работает на http://${host}:${port}`);
 });
