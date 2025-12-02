@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой Хранитель Файлов</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        ul { list-style: none; padding: 0; }
+        li { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        a { text-decoration: none; color: #007bff; }
+        form { margin: 20px 0; }
+        input[type="file"] { margin-right: 10px; }
+        button { background: #007bff; color: white; border: none; padding: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Добро пожаловать в ваш хранитель файлов</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">Загрузить файл</button>
+    </form>
+
+    <h2>Ваши файлы:</h2>
+    <ul>
+        <% files.forEach(file => { %>
+            <li>
+                <%= file.original_name %> (<%= (file.size / 1024).toFixed(2) %> KB)
+                <a href="/download/<%= file.id %>">Скачать</a>
+            </li>
+        <% }); %>
+    </ul>
+
+    <form action="/logout" method="post">
+        <button type="submit">Выход</button>
+    </form>
+</body>
+</html>

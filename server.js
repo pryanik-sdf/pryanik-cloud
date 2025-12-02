@@ -1,0 +1,122 @@
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const cookieParser = require('cookie-parser');
+const path = require('path');
+const fs = require('fs');
+
+const app = express();
+const port = process.env.PORT || 3000;
+const jwtSecret = 'your-secret-key'; // В продакшене использовать переменные окружения
+
+// Инициализация БД
+const db = new sqlite3.Database('./database.db');
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    filename TEXT,
+    original_name TEXT,
+    path TEXT,
+    size INTEGER,
+    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  )`);
+});
+
+// Multer для загрузки файлов
+const storage = multer.diskStorage({
+  destination: './uploads/',
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use('/uploads', express.static('uploads'));
+app.use(express.static('public'));
+app.set('view engine', 'ejs');
+
+// Middleware для аутентификации
+const authenticate = (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token) return res.redirect('/login');
+  jwt.verify(token, jwtSecret, (err, user) => {
+    if (err) return res.redirect('/login');
+    req.user = user;
+    next();
+  });
+};
+
+// Роуты
+app.get('/', authenticate, (req, res) => {
+  db.all('SELECT * FROM files WHERE user_id = ?', [req.user.id], (err, rows) => {
+    if (err) return res.send('Ошибка');
+    res.render('index', { files: rows });
+  });
+});
+
+app.get('/login', (req, res) => {
+  res.render('login');
+});
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  db.get('SELECT * FROM users WHERE username = ?', [username], async (err, row) => {
+    if (err || !row) return res.render('login', { error: 'Неверные данные' });
+    const match = await bcrypt.compare(password, row.password);
+    if (!match) return res.render('login', { error: 'Неверные данные' });
+    const token = jwt.sign({ id: row.id, username: row.username }, jwtSecret, { expiresIn: '1h' });
+    res.cookie('token', token, { httpOnly: true });
+    res.redirect('/');
+  });
+});
+
+app.get('/register', (req, res) => {
+  res.render('register');
+});
+
+app.post('/register', async (req, res) => {
+  const { username, password } = req.body;
+  const hashed = await bcrypt.hash(password, 10);
+  db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashed], (err) => {
+    if (err) return res.render('register', { error: 'Пользователь уже существует' });
+    res.redirect('/login');
+  });
+});
+
+app.post('/upload', authenticate, upload.single('file'), (req, res) => {
+  const { filename, originalname, size } = req.file;
+  db.run('INSERT INTO files (user_id, filename, original_name, path, size) VALUES (?, ?, ?, ?, ?)',
+    [req.user.id, filename, originalname, req.file.path, size], (err) => {
+      if (err) return res.send('Ошибка загрузки');
+      res.redirect('/');
+    });
+});
+
+app.get('/download/:id', authenticate, (req, res) => {
+  db.get('SELECT * FROM files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, row) => {
+    if (err || !row) return res.send('Файл не найден');
+    res.download(row.path, row.original_name);
+  });
+});
+
+app.post('/logout', (req, res) => {
+  res.clearCookie('token');
+  res.redirect('/login');
+});
+
+app.listen(port, () => {
+  console.log(`Сервер работает на http://localhost:${port}`);
+});
