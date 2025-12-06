@@ -135,13 +135,13 @@ function getTotalSize(user_id, callback) {
   });
 }
 
-const STORAGE_LIMIT = 100 * 1024 * 1024; // 100 MB
+const STORAGE_LIMIT = 10 * 1024 * 1024 * 1024; // 10 GB
 
 app.post('/upload', authenticate, upload.single('file'), (req, res) => {
   const { filename, originalname, size } = req.file;
   getTotalSize(req.user.id, (total) => {
     if (total + size > STORAGE_LIMIT) {
-      return res.send('Лимит хранения превышен (100 МБ)');
+      return res.send('Лимит хранения превышен (10 ГБ)');
     }
     db.run('INSERT INTO files (user_id, filename, original_name, path, size) VALUES (?, ?, ?, ?, ?)',
       [req.user.id, filename, originalname, req.file.path, size], (err) => {

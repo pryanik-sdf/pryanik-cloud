@@ -37,10 +37,21 @@
         <h1><i class="fas fa-cloud"></i> Pryanik Cloud</h1>
         <div class="upload-section">
             <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
-                <input type="file" name="file" required class="file-input">
-                <button type="submit" class="upload-btn">Загрузить файл</button>
+                <input type="file" name="file" id="file-input" required style="display:none;">
+                <button type="button" class="upload-btn" id="upload-btn">Выбрать файл для загрузки</button>
             </form>
         </div>
+
+        <script>
+            document.getElementById('upload-btn').addEventListener('click', function() {
+                document.getElementById('file-input').click();
+            });
+            document.getElementById('file-input').addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    this.form.submit();
+                }
+            });
+        </script>
 
         <h2><i class="fas fa-folder-open"></i> Ваши файлы:</h2>
         <div class="file-list">
@@ -54,7 +65,7 @@
                         </div>
                     </a>
                     <form action="/delete/<%= file.id %>" method="post" class="delete-form">
-                        <button type="submit" class="delete-btn">Удалить</button>
+                        <button type="submit" class="delete-btn" onclick="return confirm('Удалить файл?')">Удалить</button>
                     </form>
                 </div>
             <% }); %>
