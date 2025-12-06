@@ -125,7 +125,7 @@ app.get('/', authenticate, (req, res) => {
   db.all('SELECT * FROM files WHERE user_id = ?', [req.user.id], (err, rows) => {
     if (err) return res.send('Ошибка');
     getTotalSize(req.user.id, (total) => {
-      res.render('index', { files: rows, getFileIcon, totalSize: total, storageLimit: STORAGE_LIMIT });
+      res.render('index', { files: rows, getFileIcon, totalSize: total, storageLimit: STORAGE_LIMIT, user: req.user });
     });
   });
 });
