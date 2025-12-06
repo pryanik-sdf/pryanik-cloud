@@ -177,6 +177,14 @@ app.post('/delete/:id', authenticate, (req, res) => {
   });
 });
 
+app.post('/create-folder', authenticate, (req, res) => {
+  const { folderName } = req.body;
+  db.run('INSERT INTO folders (user_id, name) VALUES (?, ?)', [req.user.id, folderName], (err) => {
+    if (err) return res.send('Ошибка создания папки');
+    res.redirect('/');
+  });
+});
+
 app.get('/download/:id', authenticate, (req, res) => {
   db.get('SELECT * FROM files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, row) => {
     if (err || !row) return res.send('Файл не найден');
