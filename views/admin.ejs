@@ -10,7 +10,9 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; min-height: 100vh; }
         .container { max-width: 800px; margin: 0 auto; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.1); border-radius: 15px; padding: 30px; }
         h1 { text-align: center; color: #333; margin-bottom: 30px; }
-        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 1px solid #ddd; margin-bottom: 10px; border-radius: 10px; }
+        .user-list { margin-top: 20px; }
+        .user-header { display: flex; justify-content: space-between; font-weight: bold; padding: 10px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
+        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
         .delete-btn { background: red; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
         .logout { text-align: center; margin-top: 30px; }
     </style>
@@ -18,13 +20,23 @@
 <body>
     <div class="container">
         <h1><i class="fas fa-cogs"></i> Админ панель</h1>
-        Online Users
-        <southwest>
+        Пользователи
+        <div class="user-list">
+            <div class="user-header">
+                <span>Имя</span>
+                <span>Фамилия</span>
+                <span>Email</span>
+                <span>Статус</span>
+                <span>Действие</span>
+            </div>
             <% users.forEach(user => { %>
                 <div class="user-item">
+                    <span><%= user.firstName %></span>
+                    <span><%= user.lastName %></span>
                     <span><%= user.email %></span>
+                    <span><%= user.status %></span>
                     <form action="/admin/delete-user/<%= user.id %>" method="post">
-                        <button type="submit" class="delete-btn">Удалить</button>
+                        <button type="submit" class="delete-btn" onclick="return confirm('Удалить пользователя?')">Удалить</button>
                     </form>
                 </div>
             <% }); %>

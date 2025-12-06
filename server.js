@@ -149,7 +149,7 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, firstName, lastName } = req.body;
   if (!validator.isEmail(email)) return res.render('register', { error: 'Неверный email' });
   const hashed = await bcrypt.hash(password, 10);
   db.run('INSERT INTO users (email, password) VALUES (?, ?)', [email, hashed], function(err) {
@@ -157,8 +157,8 @@ app.post('/register', async (req, res) => {
     const userId = this.lastID;
     firestoreDb.collection('users').doc(userId.toString()).set({
       email,
-      firstName: '',
-      lastName: '',
+      firstName,
+      lastName,
       status: 'user'
     }).catch(err => console.log('Firestore error:', err));
     res.redirect('/login');
@@ -221,9 +221,21 @@ const adminAuth = (req, res, next) => {
 };
 
 app.get('/admin', authenticate, adminAuth, (req, res) => {
-  db.all('SELECT email, id FROM users', [], (err, rows) => {
+  db.all('SELECT email, id FROM users', [], async (err, rows) => {
     if (err) return res.send('Ошибка');
-    res.render('admin', { users: rows });
+    const users = [];
+    for (const row of rows) {
+      const doc = await firestoreDb.collection('users').doc(row.id.toString()).get().catch(() => null);
+      const data = doc && doc.exists ? doc.data() : { firstName: '', lastName: '', status: 'user' };
+      users.push({
+        id: row.id,
+        email: row.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        status: data.status
+      });
+    }
+    res.render('admin', { users });
   });
 });
 
