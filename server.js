@@ -18,10 +18,11 @@ const jwtSecret = process.env.JWT_SECRET || 'default-secret';
 const validator = require('validator');
 const firebaseAdmin = require('firebase-admin');
 
-// TODO: download Firebase key.json from Firebase Console > Settings > Service accounts > Generate new key
+// Firebase config - download firebase-key.json from Firebase Console > Settings > Service accounts > Generate new key
 firebaseAdmin.initializeApp({
-  credential: firebaseAdmin.credential.cert('./firebase-key.json'), // Замени на путь к твоему key.json
-  databaseURL: 'https://your-project-id.firebaseio.com' // Замени на свой project ID
+  credential: firebaseAdmin.credential.cert('./firebase-key.json'),
+  projectId: 'pryanik-cloud',
+  databaseURL: 'https://pryanik-cloud.firebaseio.com'
 });
 
 const firestoreDb = firebaseAdmin.firestore();
