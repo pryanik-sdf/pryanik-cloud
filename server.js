@@ -19,13 +19,22 @@ const validator = require('validator');
 const firebaseAdmin = require('firebase-admin');
 
 // Firebase config - download firebase-key.json from Firebase Console > Settings > Service accounts > Generate new key
-firebaseAdmin.initializeApp({
-  credential: firebaseAdmin.credential.cert('./firebase-key.json'),
-  projectId: 'pryanik-cloud',
-  databaseURL: 'https://pryanik-cloud.firebaseio.com'
-});
-
-const firestoreDb = firebaseAdmin.firestore();
+let firestoreDb = null;
+try {
+  if (fs.existsSync('./firebase-key.json')) {
+    firebaseAdmin.initializeApp({
+      credential: firebaseAdmin.credential.cert('./firebase-key.json'),
+      projectId: 'pryanik-cloud',
+      databaseURL: 'https://pryanik-cloud.firebaseio.com'
+    });
+    firestoreDb = firebaseAdmin.firestore();
+    console.log('Firebase connected');
+  } else {
+    console.log('Firebase not configured - add firebase-key.json for roles');
+  }
+} catch (error) {
+  console.log('Firebase error:', error.message);
+}
 
 // Инициализация SQLite БД
 const db = new sqlite3.Database('./database.db');
