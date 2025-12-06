@@ -22,6 +22,14 @@
         .upload-btn { background: linear-gradient(45deg, #007bff, #667eea); border: none; color: white; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-size: 16px; transition: 0.3s; }
         .upload-btn:hover { transform: scale(1.05); box-shadow: 0 4px 15px rgba(0,123,255,0.3); }
         .logout { text-align: center; margin-top: 30px; }
+        .file-item-container { position: relative; }
+        .delete-form { position: absolute; top: 5px; right: 5px; }
+        .delete-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+        .delete-btn:hover { background: #c82333; }
+        .storage-indicator { position: fixed; bottom: 20px; left: 20px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .storage-text { font-size: 14px; margin-bottom: 5px; }
+        progress { width: 100%; height: 8px; }
+        .storage-percent { text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -37,13 +45,18 @@
         <h2><i class="fas fa-folder-open"></i> Ваши файлы:</h2>
         <div class="file-list">
             <% files.forEach(file => { %>
-                <a href="/download/<%= file.id %>">
-                    <div class="file-item">
-                        <i class="<%= getFileIcon(file.original_name) %> file-icon"></i>
-                        <div class="file-name"><%= file.original_name %></div>
-                        <div class="file-size"><%= (file.size / 1024).toFixed(2) %> KB</div>
-                    </div>
-                </a>
+                <div class="file-item-container">
+                    <a href="/download/<%= file.id %>">
+                        <div class="file-item">
+                            <i class="<%= getFileIcon(file.original_name) %> file-icon"></i>
+                            <div class="file-name"><%= file.original_name %></div>
+                            <div class="file-size"><%= (file.size / 1024).toFixed(2) %> KB</div>
+                        </div>
+                    </a>
+                    <form action="/delete/<%= file.id %>" method="post" class="delete-form">
+                        <button type="submit" class="delete-btn">Удалить</button>
+                    </form>
+                </div>
             <% }); %>
         </div>
 
@@ -51,6 +64,14 @@
             <form action="/logout" method="post">
                 <button type="submit" class="upload-btn">Выход</button>
             </form>
+        </div>
+
+        <div class="storage-indicator">
+            <div class="storage-text">
+                Использовано: <%= (totalSize / 1024 / 1024).toFixed(1) %> / <%= (storageLimit / 1024 / 1024) %> МБ
+            </div>
+            <progress value="<%= (totalSize / storageLimit) * 100 %>" max="100"></progress>
+            <div class="storage-percent"><%= ((totalSize / storageLimit) * 100).toFixed(1) %>%</div>
         </div>
     </div>
 </body>

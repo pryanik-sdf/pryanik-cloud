@@ -92,7 +92,9 @@ function getFileIcon(filename) {
 app.get('/', authenticate, (req, res) => {
   db.all('SELECT * FROM files WHERE user_id = ?', [req.user.id], (err, rows) => {
     if (err) return res.send('Ошибка');
-    res.render('index', { files: rows, getFileIcon });
+    getTotalSize(req.user.id, (total) => {
+      res.render('index', { files: rows, getFileIcon, totalSize: total, storageLimit: STORAGE_LIMIT });
+    });
   });
 });
 
@@ -125,13 +127,39 @@ app.post('/register', async (req, res) => {
   });
 });
 
+// Функция для получения общего размера файлов пользователя
+function getTotalSize(user_id, callback) {
+  db.get('SELECT SUM(size) as total FROM files WHERE user_id = ?', [user_id], (err, row) => {
+    if (err) callback(0);
+    else callback(row.total || 0);
+  });
+}
+
+const STORAGE_LIMIT = 100 * 1024 * 1024; // 100 MB
+
 app.post('/upload', authenticate, upload.single('file'), (req, res) => {
   const { filename, originalname, size } = req.file;
-  db.run('INSERT INTO files (user_id, filename, original_name, path, size) VALUES (?, ?, ?, ?, ?)',
-    [req.user.id, filename, originalname, req.file.path, size], (err) => {
-      if (err) return res.send('Ошибка загрузки');
+  getTotalSize(req.user.id, (total) => {
+    if (total + size > STORAGE_LIMIT) {
+      return res.send('Лимит хранения превышен (100 МБ)');
+    }
+    db.run('INSERT INTO files (user_id, filename, original_name, path, size) VALUES (?, ?, ?, ?, ?)',
+      [req.user.id, filename, originalname, req.file.path, size], (err) => {
+        if (err) return res.send('Ошибка загрузки');
+        res.redirect('/');
+      });
+  });
+});
+
+// Удаление файла
+app.post('/delete/:id', authenticate, (req, res) => {
+  db.get('SELECT * FROM files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, row) => {
+    if (err || !row) return res.redirect('/');
+    fs.unlink(row.path, (err) => {});
+    db.run('DELETE FROM files WHERE id = ?', [req.params.id], () => {
       res.redirect('/');
     });
+  });
 });
 
 app.get('/download/:id', authenticate, (req, res) => {
