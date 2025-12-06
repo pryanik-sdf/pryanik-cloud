@@ -15,23 +15,36 @@ const port = process.env.PORT || 3000;
 const host = process.env.HOST || '0.0.0.0';
 const jwtSecret = process.env.JWT_SECRET || 'default-secret';
 
+const validator = require('validator');
+
 // Инициализация БД
 const db = new sqlite3.Database('./database.db');
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
+    email TEXT UNIQUE,
     password TEXT
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS folders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    name TEXT,
+    parent_id INTEGER DEFAULT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(parent_id) REFERENCES folders(id)
   )`);
   db.run(`CREATE TABLE IF NOT EXISTS files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
+    folder_id INTEGER DEFAULT NULL,
     filename TEXT,
     original_name TEXT,
     path TEXT,
     size INTEGER,
     uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(folder_id) REFERENCES folders(id)
   )`);
 });
 
@@ -103,12 +116,13 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  db.get('SELECT * FROM users WHERE username = ?', [username], async (err, row) => {
+  const { email, password } = req.body;
+  if (!validator.isEmail(email)) return res.render('login', { error: 'Неверный email' });
+  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, row) => {
     if (err || !row) return res.render('login', { error: 'Неверные данные' });
     const match = await bcrypt.compare(password, row.password);
     if (!match) return res.render('login', { error: 'Неверные данные' });
-    const token = jwt.sign({ id: row.id, username: row.username }, jwtSecret, { expiresIn: '1h' });
+    const token = jwt.sign({ id: row.id, email: row.email }, jwtSecret, { expiresIn: '1h' });
     res.cookie('token', token, { httpOnly: true });
     res.redirect('/');
   });
@@ -119,10 +133,11 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
+  if (!validator.isEmail(email)) return res.render('register', { error: 'Неверный email' });
   const hashed = await bcrypt.hash(password, 10);
-  db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashed], (err) => {
-    if (err) return res.render('register', { error: 'Пользователь уже существует' });
+  db.run('INSERT INTO users (email, password) VALUES (?, ?)', [email, hashed], (err) => {
+    if (err) return res.render('register', { error: 'Email уже зарегистрирован' });
     res.redirect('/login');
   });
 });
@@ -135,13 +150,13 @@ function getTotalSize(user_id, callback) {
   });
 }
 
-const STORAGE_LIMIT = 10 * 1024 * 1024 * 1024; // 10 GB
+const STORAGE_LIMIT = 2.5 * 1024 * 1024 * 1024; // 2.5 GB
 
 app.post('/upload', authenticate, upload.single('file'), (req, res) => {
   const { filename, originalname, size } = req.file;
   getTotalSize(req.user.id, (total) => {
     if (total + size > STORAGE_LIMIT) {
-      return res.send('Лимит хранения превышен (10 ГБ)');
+      return res.send('Лимит хранения превышен (2.5 ГБ)');
     }
     db.run('INSERT INTO files (user_id, filename, original_name, path, size) VALUES (?, ?, ?, ?, ?)',
       [req.user.id, filename, originalname, req.file.path, size], (err) => {
