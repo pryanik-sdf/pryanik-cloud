@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ панель - Pryanik Cloud</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css.all.min.css">
+    <style>
+        /* Используй похожий стиль из index.ejs */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.1); border-radius: 15px; padding: 30px; }
+        h1 { text-align: center; color: #333; margin-bottom: 30px; }
+        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 1px solid #ddd; margin-bottom: 10px; border-radius: 10px; }
+        .delete-btn { background: red; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+        .logout { text-align: center; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-cogs"></i> Админ панель</h1>
+        Online Users
+        <southwest>
+            <% users.forEach(user => { %>
+                <div class="user-item">
+                    <span><%= user.email %></span>
+                    <form action="/admin/delete-user/<%= user.id %>" method="post">
+                        <button type="submit" class="delete-btn">Удалить</button>
+                    </form>
+                </div>
+            <% }); %>
+        </div>
+        <div class="logout">
+            <a href="/">Вернуться в Cloud</a>
+        </div>
+    </div>
+</body>
+</html>

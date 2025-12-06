@@ -16,8 +16,17 @@ const host = process.env.HOST || '0.0.0.0';
 const jwtSecret = process.env.JWT_SECRET || 'default-secret';
 
 const validator = require('validator');
+const firebaseAdmin = require('firebase-admin');
 
-// Инициализация БД
+// TODO: download Firebase key.json from Firebase Console > Settings > Service accounts > Generate new key
+firebaseAdmin.initializeApp({
+  credential: firebaseAdmin.credential.cert('./firebase-key.json'), // Замени на путь к твоему key.json
+  databaseURL: 'https://your-project-id.firebaseio.com' // Замени на свой project ID
+});
+
+const firestoreDb = firebaseAdmin.firestore();
+
+// Инициализация SQLite БД
 const db = new sqlite3.Database('./database.db');
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS users (
@@ -122,9 +131,16 @@ app.post('/login', async (req, res) => {
     if (err || !row) return res.render('login', { error: 'Неверные данные' });
     const match = await bcrypt.compare(password, row.password);
     if (!match) return res.render('login', { error: 'Неверные данные' });
-    const token = jwt.sign({ id: row.id, email: row.email }, jwtSecret, { expiresIn: '1h' });
-    res.cookie('token', token, { httpOnly: true });
-    res.redirect('/');
+    firestoreDb.collection('users').doc(row.id.toString()).get().then(doc => {
+      const userData = doc.exists ? doc.data() : { status: 'user' };
+      const token = jwt.sign({ id: row.id, email: row.email, status: userData.status }, jwtSecret, { expiresIn: '1h' });
+      res.cookie('token', token, { httpOnly: true });
+      res.redirect('/');
+    }).catch(() => {
+      const token = jwt.sign({ id: row.id, email: row.email, status: 'user' }, jwtSecret, { expiresIn: '1h' });
+      res.cookie('token', token, { httpOnly: true });
+      res.redirect('/');
+    });
   });
 });
 
@@ -136,8 +152,15 @@ app.post('/register', async (req, res) => {
   const { email, password } = req.body;
   if (!validator.isEmail(email)) return res.render('register', { error: 'Неверный email' });
   const hashed = await bcrypt.hash(password, 10);
-  db.run('INSERT INTO users (email, password) VALUES (?, ?)', [email, hashed], (err) => {
+  db.run('INSERT INTO users (email, password) VALUES (?, ?)', [email, hashed], function(err) {
     if (err) return res.render('register', { error: 'Email уже зарегистрирован' });
+    const userId = this.lastID;
+    firestoreDb.collection('users').doc(userId.toString()).set({
+      email,
+      firstName: '',
+      lastName: '',
+      status: 'user'
+    }).catch(err => console.log('Firestore error:', err));
     res.redirect('/login');
   });
 });
@@ -189,6 +212,31 @@ app.get('/download/:id', authenticate, (req, res) => {
   db.get('SELECT * FROM files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, row) => {
     if (err || !row) return res.send('Файл не найден');
     res.download(row.path, row.original_name);
+  });
+});
+
+const adminAuth = (req, res, next) => {
+  if (req.user.status !== 'admin') return res.send('Нет доступа');
+  next();
+};
+
+app.get('/admin', authenticate, adminAuth, (req, res) => {
+  db.all('SELECT email, id FROM users', [], (err, rows) => {
+    if (err) return res.send('Ошибка');
+    res.render('admin', { users: rows });
+  });
+});
+
+app.post('/admin/delete-user/:id', authenticate, adminAuth, (req, res) => {
+  const userId = req.params.id;
+  db.run('DELETE FROM users WHERE id = ?', [userId], () => {
+    firestoreDb.collection('users').doc(userId).delete().catch(err => console.log('Firestore error:', err));
+    db.all('SELECT path FROM files WHERE user_id = ?', [userId], (err, rows) => {
+      rows.forEach(row => fs.unlink(row.path, () => {}));
+    });
+    db.run('DELETE FROM files WHERE user_id = ?', [userId], () => {
+      res.redirect('/admin');
+    });
   });
 });
 
