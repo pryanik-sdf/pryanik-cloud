@@ -20,5 +20,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
+  },
+  "devDependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0"
   }
 }

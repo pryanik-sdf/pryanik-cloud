@@ -67,10 +67,32 @@ const authenticate = (req, res, next) => {
 };
 
 // Роуты
+function getFileIcon(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const icons = {
+    pdf: 'fas fa-file-pdf',
+    doc: 'fas fa-file-word',
+    docx: 'fas fa-file-word',
+    xls: 'fas fa-file-excel',
+    xlsx: 'fas fa-file-excel',
+    txt: 'fas fa-file-alt',
+    jpg: 'fas fa-image',
+    jpeg: 'fas fa-image',
+    png: 'fas fa-image',
+    gif: 'fas fa-image',
+    zip: 'fas fa-file-archive',
+    rar: 'fas fa-file-archive',
+    mp3: 'fas fa-music',
+    mp4: 'fas fa-video',
+    avi: 'fas fa-video',
+  };
+  return icons[ext] || 'fas fa-file';
+}
+
 app.get('/', authenticate, (req, res) => {
   db.all('SELECT * FROM files WHERE user_id = ?', [req.user.id], (err, rows) => {
     if (err) return res.send('Ошибка');
-    res.render('index', { files: rows });
+    res.render('index', { files: rows, getFileIcon });
   });
 });
 

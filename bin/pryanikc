@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Pryanic Cloud CLI Tool
+
+# Опции
+DISKS_ONLY=false
+
+# Функция для показа дисков
+show_disks() {
+  echo "Подключенные диски:"
+  lsblk -d -n -o NAME,SIZE,TYPE | grep -E "(disk|loop)" | nl -v1 -
+}
+
+# Функция для выбора раздела
+select_partition() {
+  DISK=$1
+  echo "Разделы на диске $DISK:"
+  lsblk -n -o NAME,SIZE,FSTYPE,MOUNTPOINT | grep "$DISK" | grep -v "$DISK " | nl -v1 -
+  echo "Выберите раздел (номер):"
+  read -r PARTITION_NUM
+  SELECTED_PARTITION=$(lsblk -n -o NAME | grep "$DISK" | grep -v "$DISK$" | sed -n "${PARTITION_NUM}p")
+  echo "Выбрано: $SELECTED_PARTITION"
+  echo "Точка монтирования:"
+  read -r MOUNT_POINT
+  sudo mkdir -p "$MOUNT_POINT"
+  sudo mount "/dev/${SELECTED_PARTITION}" "$MOUNT_POINT"
+  if [ $? -eq 0 ]; then
+    echo "Успешно смонтировано в $MOUNT_POINT"
+  else
+    echo "Ошибка монтирования"
+  fi
+}
+
+# Парсинг аргументов
+case "$1" in
+  -d|--disks)
+    if [ $# -eq 2 ] && [[ $2 =~ ^[0-9]+$ ]]; then
+      DISK_NUM=$2
+      SELECTED_DISK=$(lsblk -d -n -o NAME | sed -n "${DISK_NUM}p")
+      if [ -n "$SELECTED_DISK" ]; then
+        select_partition "$SELECTED_DISK"
+      else
+        echo "Диск с номером $DISK_NUM не найден"
+      fi
+    else
+      show_disks
+    fi
+    ;;
+  --help|-h)
+    echo "Pryanik Cloud CLI"
+    echo "Использование:"
+    echo "  pryanikc -d                    # Показать диски"
+    echo "  pryanikc -d <номер диска>     # Монтировать диск"
+    ;;
+  *)
+    echo "Использование: pryanikc [--help|-d [номер]]"
+    ;;
+esac

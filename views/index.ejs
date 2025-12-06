@@ -3,37 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мой Хранитель Файлов</title>
+    <title>Pryanik Cloud - Хранитель Файлов</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1 { color: #333; }
-        ul { list-style: none; padding: 0; }
-        li { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        a { text-decoration: none; color: #007bff; }
-        form { margin: 20px 0; }
-        input[type="file"] { margin-right: 10px; }
-        button { background: #007bff; color: white; border: none; padding: 10px; cursor: pointer; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.1); border-radius: 15px; padding: 30px; }
+        h1 { text-align: center; color: #333; margin-bottom: 30px; }
+        .upload-section { margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; }
+        .file-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .file-item { display: flex; flex-direction: column; align-items: center; padding: 15px; border: 2px dashed #ddd; border-radius: 10px; transition: 0.3s; }
+        .file-item:hover { border-color: #007bff; }
+        .file-icon { font-size: 48px; color: #007bff; margin-bottom: 10px; }
+        .file-name { font-size: 14px; color: #555; text-align: center; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-size { font-size: 12px; color: #888; }
+        a { text-decoration: none; color: inherit; }
+        .upload-form { display: flex; flex-direction: column; align-items: center; }
+        .file-input { margin-bottom: 10px; }
+        .upload-btn { background: linear-gradient(45deg, #007bff, #667eea); border: none; color: white; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        .upload-btn:hover { transform: scale(1.05); box-shadow: 0 4px 15px rgba(0,123,255,0.3); }
+        .logout { text-align: center; margin-top: 30px; }
     </style>
 </head>
 <body>
-    <h1>Добро пожаловать в ваш хранитель файлов</h1>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" required>
-        <button type="submit">Загрузить файл</button>
-    </form>
+    <div class="container">
+        <h1><i class="fas fa-cloud"></i> Pryanik Cloud</h1>
+        <div class="upload-section">
+            <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
+                <input type="file" name="file" required class="file-input">
+                <button type="submit" class="upload-btn">Загрузить файл</button>
+            </form>
+        </div>
 
-    <h2>Ваши файлы:</h2>
-    <ul>
-        <% files.forEach(file => { %>
-            <li>
-                <%= file.original_name %> (<%= (file.size / 1024).toFixed(2) %> KB)
-                <a href="/download/<%= file.id %>">Скачать</a>
-            </li>
-        <% }); %>
-    </ul>
+        <h2><i class="fas fa-folder-open"></i> Ваши файлы:</h2>
+        <div class="file-list">
+            <% files.forEach(file => { %>
+                <a href="/download/<%= file.id %>">
+                    <div class="file-item">
+                        <i class="<%= getFileIcon(file.original_name) %> file-icon"></i>
+                        <div class="file-name"><%= file.original_name %></div>
+                        <div class="file-size"><%= (file.size / 1024).toFixed(2) %> KB</div>
+                    </div>
+                </a>
+            <% }); %>
+        </div>
 
-    <form action="/logout" method="post">
-        <button type="submit">Выход</button>
-    </form>
+        <div class="logout">
+            <form action="/logout" method="post">
+                <button type="submit" class="upload-btn">Выход</button>
+            </form>
+        </div>
+    </div>
 </body>
 </html>
