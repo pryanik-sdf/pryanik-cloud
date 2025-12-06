@@ -141,16 +141,14 @@ app.post('/login', async (req, res) => {
     if (err || !row) return res.render('login', { error: 'Неверные данные' });
     const match = await bcrypt.compare(password, row.password);
     if (!match) return res.render('login', { error: 'Неверные данные' });
-    firestoreDb.collection('users').doc(row.id.toString()).get().then(doc => {
-      const userData = doc.exists ? doc.data() : { status: 'user' };
-      const token = jwt.sign({ id: row.id, email: row.email, status: userData.status }, jwtSecret, { expiresIn: '1h' });
-      res.cookie('token', token, { httpOnly: true });
-      res.redirect('/');
-    }).catch(() => {
-      const token = jwt.sign({ id: row.id, email: row.email, status: 'user' }, jwtSecret, { expiresIn: '1h' });
-      res.cookie('token', token, { httpOnly: true });
-      res.redirect('/');
-    });
+    let userStatus = 'user';
+    if (firestoreDb) {
+      const doc = await firestoreDb.collection('users').doc(row.id.toString()).get().catch(() => null);
+      if (doc && doc.exists) userStatus = doc.data().status || 'user';
+    }
+    const token = jwt.sign({ id: row.id, email: row.email, status: userStatus }, jwtSecret, { expiresIn: '1h' });
+    res.cookie('token', token, { httpOnly: true });
+    res.redirect('/');
   });
 });
 
@@ -165,12 +163,14 @@ app.post('/register', async (req, res) => {
   db.run('INSERT INTO users (email, password) VALUES (?, ?)', [email, hashed], function(err) {
     if (err) return res.render('register', { error: 'Email уже зарегистрирован' });
     const userId = this.lastID;
-    firestoreDb.collection('users').doc(userId.toString()).set({
-      email,
-      firstName,
-      lastName,
-      status: 'user'
-    }).catch(err => console.log('Firestore error:', err));
+    if (firestoreDb) {
+      firestoreDb.collection('users').doc(userId.toString()).set({
+        email,
+        firstName,
+        lastName,
+        status: 'user'
+      }).catch(err => console.log('Firestore error:', err));
+    }
     res.redirect('/login');
   });
 });
@@ -235,8 +235,11 @@ app.get('/admin', authenticate, adminAuth, (req, res) => {
     if (err) return res.send('Ошибка');
     const users = [];
     for (const row of rows) {
-      const doc = await firestoreDb.collection('users').doc(row.id.toString()).get().catch(() => null);
-      const data = doc && doc.exists ? doc.data() : { firstName: '', lastName: '', status: 'user' };
+      let data = { firstName: '', lastName: '', status: 'user' };
+      if (firestoreDb) {
+        const doc = await firestoreDb.collection('users').doc(row.id.toString()).get().catch(() => null);
+        if (doc && doc.exists) data = doc.data();
+      }
       users.push({
         id: row.id,
         email: row.email,
@@ -252,7 +255,9 @@ app.get('/admin', authenticate, adminAuth, (req, res) => {
 app.post('/admin/delete-user/:id', authenticate, adminAuth, (req, res) => {
   const userId = req.params.id;
   db.run('DELETE FROM users WHERE id = ?', [userId], () => {
-    firestoreDb.collection('users').doc(userId).delete().catch(err => console.log('Firestore error:', err));
+    if (firestoreDb) {
+      firestoreDb.collection('users').doc(userId).delete().catch(err => console.log('Firestore error:', err));
+    }
     db.all('SELECT path FROM files WHERE user_id = ?', [userId], (err, rows) => {
       rows.forEach(row => fs.unlink(row.path, () => {}));
     });
